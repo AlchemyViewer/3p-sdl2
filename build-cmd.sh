@@ -20,7 +20,7 @@ fi
 TOP="$(dirname "$0")"
 
 SDL_SOURCE_DIR="SDL2"
-SDL_VERSION=$(sed -n -e 's/^Version: //p' "$TOP/$SDL_SOURCE_DIR/SDL2.spec")
+SDL_VERSION="2.28.5" # $(sed -n -e 's/^Version: //p' "$TOP/$SDL_SOURCE_DIR/SDL2.spec")
 
 stage="$(pwd)"
 
