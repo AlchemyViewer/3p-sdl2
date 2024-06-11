@@ -13,7 +13,7 @@ jobs:
           addrsize: ${{ matrix.addrsize }}
           build-variables-repo: alchemyviewer/build-variables
           build-variables-ref: alchemy
-          apt-packages: ninja-build libasound2-dev libpulse-dev libpipewire-0.3-dev libjack-dev libdbus-1-dev libwayland-dev libwayland-egl-backend-dev wayland-protocols libx11-dev x11proto-dev libxext-dev libxrender-dev libxi-dev libxss-dev libxinerama-dev libxkbcommon-dev libxrandr-dev libxcursor-dev libxt-dev libxv-dev libxxf86vm-dev libice-dev libudev-dev libdbus-1-dev libibus-1.0-dev fcitx-libs-dev libopengl-dev libgl-dev libglx-dev libgles-dev libegl-dev libvulkan-dev libglvnd-dev
+          apt-packages: ninja-build libunwind-dev libasound2-dev libpulse-dev libpipewire-0.3-dev libjack-dev libdbus-1-dev libdrm-dev libwayland-dev libwayland-egl-backend-dev wayland-protocols libx11-dev x11proto-dev libxext-dev libxrender-dev libxi-dev libxss-dev libxinerama-dev libxkbcommon-dev libxrandr-dev libxcursor-dev libxt-dev libxv-dev libxxf86vm-dev libice-dev libudev-dev libdbus-1-dev libibus-1.0-dev fcitx-libs-dev libopengl-dev libgl-dev libglx-dev libgles-dev libegl-dev libvulkan-dev libglvnd-dev
           brew-packages: ninja
           setup-macos-codesign: true
           macos-p12-base64: ${{ secrets.APPLE_CERT_BASE64 }}
