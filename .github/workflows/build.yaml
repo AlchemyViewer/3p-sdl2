@@ -13,8 +13,13 @@ jobs:
           addrsize: ${{ matrix.addrsize }}
           build-variables-repo: alchemyviewer/build-variables
           build-variables-ref: alchemy
-          apt-packages: ninja-build
+          apt-packages: ninja-build libasound2-dev libpulse-dev libpipewire-0.3-dev libjack-dev libdbus-1-dev libwayland-dev libwayland-egl-backend-dev wayland-protocols libx11-dev x11proto-dev libxext-dev libxrender-dev libxi-dev libxss-dev libxinerama-dev libxkbcommon-dev libxrandr-dev libxcursor-dev libxt-dev libxv-dev libxxf86vm-dev libice-dev
+
           brew-packages: ninja
+          setup-macos-codesign: true
+          macos-p12-base64: ${{ secrets.APPLE_CERT_BASE64 }}
+          macos-p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+          macos-p12-id: ${{ secrets.APPLE_CERT_ID }}
   release:
     needs: build
     runs-on: [ubuntu-latest]

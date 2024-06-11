@@ -70,21 +70,16 @@ case "$AUTOBUILD_PLATFORM" in
         popd
     ;;
     darwin*)
-        export MACOSX_DEPLOYMENT_TARGET=11.0
-
         # Setup build flags
-        ARCH_FLAGS="-arch x86_64"
-        SDK_FLAGS="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} -isysroot ${SDKROOT}"
-        DEBUG_COMMON_FLAGS="$ARCH_FLAGS $SDK_FLAGS -Og -g -msse4.2 -fPIC -DPIC"
-        RELEASE_COMMON_FLAGS="$ARCH_FLAGS $SDK_FLAGS -O3 -flto -g -msse4.2 -fPIC -DPIC -fstack-protector-strong"
-        DEBUG_CFLAGS="$DEBUG_COMMON_FLAGS"
-        RELEASE_CFLAGS="$RELEASE_COMMON_FLAGS"
-        DEBUG_CXXFLAGS="$DEBUG_COMMON_FLAGS -std=c++17"
-        RELEASE_CXXFLAGS="$RELEASE_COMMON_FLAGS -std=c++17"
-        DEBUG_CPPFLAGS="-DPIC"
-        RELEASE_CPPFLAGS="-DPIC"
-        DEBUG_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names"
-        RELEASE_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names"
+        C_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CFLAGS"
+        C_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CFLAGS"
+        CXX_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_CXXFLAGS"
+        CXX_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_CXXFLAGS"
+        LINK_OPTS_X86="-arch x86_64 $LL_BUILD_RELEASE_LINKER"
+        LINK_OPTS_ARM64="-arch arm64 $LL_BUILD_RELEASE_LINKER"
+
+        # deploy target
+        export MACOSX_DEPLOYMENT_TARGET=${LL_BUILD_DARWIN_BASE_DEPLOY_TARGET}
 
         mkdir -p "$stage/include/SDL2"
         mkdir -p "$stage/lib/release"
@@ -94,13 +89,12 @@ case "$AUTOBUILD_PLATFORM" in
 
         mkdir -p "build"
         pushd "build"
-            CFLAGS="$RELEASE_CFLAGS" \
-            CXXFLAGS="$RELEASE_CXXFLAGS" \
-            CPPFLAGS="$RELEASE_CPPFLAGS" \
-            LDFLAGS="$RELEASE_LDFLAGS" \
+            CFLAGS="$C_OPTS_X86" \
+            CXXFLAGS="$CXX_OPTS_X86" \
+            LDFLAGS="$LINK_OPTS_X86" \
             cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" \
-                -DCMAKE_C_FLAGS="$RELEASE_CFLAGS" \
-                -DCMAKE_CXX_FLAGS="$RELEASE_CXXFLAGS" \
+                -DCMAKE_C_FLAGS="$C_OPTS_X86" \
+                -DCMAKE_CXX_FLAGS="$CXX_OPTS_X86" \
                 -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
                 -DCMAKE_MACOSX_RPATH=YES \
@@ -119,6 +113,17 @@ case "$AUTOBUILD_PLATFORM" in
             fix_dylib_id "libSDL2.dylib"
             strip -x -S libSDL2.dylib
         popd
+
+        if [ -n "${AUTOBUILD_KEYCHAIN_PATH:=""}" -a -n "${AUTOBUILD_KEYCHAIN_ID:=""}" ]; then
+            for dylib in $stage/lib/*/libSDL2*.dylib;
+            do
+                if [ -f "$dylib" ]; then
+                    codesign --keychain "$AUTOBUILD_KEYCHAIN_PATH" --sign "$AUTOBUILD_KEYCHAIN_ID" --force --timestamp "$dylib"
+                fi
+            done
+        else
+            echo "Code signing not configured; skipping codesign."
+        fi
         ;;
     linux*)
         # Linux build environment at Linden comes pre-polluted with stuff that can
@@ -134,18 +139,11 @@ case "$AUTOBUILD_PLATFORM" in
         # So, clear out bits that shouldn't affect our configure-directed build
         # but which do nonetheless.
         #
-        unset DISTCC_HOSTS CC CXX CFLAGS CPPFLAGS CXXFLAGS
-        
-        # Default target per autobuild build --address-size
-        opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE}"
-        DEBUG_COMMON_FLAGS="$opts -Og -g -fPIC -DPIC"
-        RELEASE_COMMON_FLAGS="$opts -O3 -g -fPIC -DPIC -fstack-protector-strong -D_FORTIFY_SOURCE=2"
-        DEBUG_CFLAGS="$DEBUG_COMMON_FLAGS"
-        RELEASE_CFLAGS="$RELEASE_COMMON_FLAGS"
-        DEBUG_CXXFLAGS="$DEBUG_COMMON_FLAGS -std=c++17"
-        RELEASE_CXXFLAGS="$RELEASE_COMMON_FLAGS -std=c++17"
-        DEBUG_CPPFLAGS="-DPIC"
-        RELEASE_CPPFLAGS="-DPIC"
+        unset DISTCC_HOSTS CFLAGS CPPFLAGS CXXFLAGS
+
+        # Default target per --address-size
+        opts_c="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CFLAGS}"
+        opts_cxx="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE_CXXFLAGS}"
 
         mkdir -p "$stage/include/SDL2"
         mkdir -p "$stage/lib/debug"
@@ -168,12 +166,11 @@ case "$AUTOBUILD_PLATFORM" in
         
         mkdir -p "build"
         pushd "build"
-            CFLAGS="$RELEASE_CFLAGS" \
-            CXXFLAGS="$RELEASE_CXXFLAGS" \
-            CPPFLAGS="$RELEASE_CPPFLAGS" \
+            CFLAGS="$opts_c" \
+            CXXFLAGS="$opts_cxx" \
             cmake .. -GNinja -DCMAKE_BUILD_TYPE="Release" \
-                -DCMAKE_C_FLAGS="$RELEASE_CFLAGS" \
-                -DCMAKE_CXX_FLAGS="$RELEASE_CXXFLAGS" \
+                -DCMAKE_C_FLAGS="$opts_c" \
+                -DCMAKE_CXX_FLAGS="$opts_cxx" \
                 -DCMAKE_INSTALL_PREFIX=$PREFIX_RELEASE
 
             cmake --build . --config Release
