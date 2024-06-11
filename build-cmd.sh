@@ -179,9 +179,6 @@ case "$AUTOBUILD_PLATFORM" in
 
         cp -a $PREFIX_RELEASE/include/SDL2/*.* $stage/include/SDL2
 
-        cp -a $PREFIX_DEBUG/lib/*.so* $stage/lib/debug
-        cp -a $PREFIX_DEBUG/lib/libSDL2maind.a $stage/lib/debug
-
         cp -a $PREFIX_RELEASE/lib/*.so* $stage/lib/release
         cp -a $PREFIX_RELEASE/lib/libSDL2main.a $stage/lib/release
     ;;
