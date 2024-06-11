@@ -49,44 +49,28 @@ case "$AUTOBUILD_PLATFORM" in
         mkdir -p "$stage/lib/debug"
         mkdir -p "$stage/lib/release"
 
-        mkdir -p "build_debug"
-        pushd "build_debug"
-            cmake .. -G "$AUTOBUILD_WIN_CMAKE_GEN" -A "$AUTOBUILD_WIN_VSPLATFORM" -DCMAKE_INSTALL_PREFIX=$(cygpath -m $stage)/debug
+        mkdir -p "build"
+        pushd "build"
+            cmake .. -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=$(cygpath -m $stage)/release -DBUILD_SHARED_LIBS=ON
         
             cmake --build . --config Debug
-            cmake --install . --config Debug
+            cmake --build . --config Release
 
             # conditionally run unit tests
             if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
                 ctest -C Debug
-            fi
-
-            cp $stage/debug/bin/*.dll $stage/lib/debug/
-            cp $stage/debug/lib/*.lib $stage/lib/debug/
-        popd
-
-        mkdir -p "build_release"
-        pushd "build_release"
-            cmake .. -G "$AUTOBUILD_WIN_CMAKE_GEN" -A "$AUTOBUILD_WIN_VSPLATFORM" -DCMAKE_INSTALL_PREFIX=$(cygpath -m $stage)/release
-        
-            cmake --build . --config Release
-            cmake --install . --config Release
-
-            # conditionally run unit tests
-            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
                 ctest -C Release
             fi
     
-            cp $stage/release/bin/*.dll $stage/lib/release/
-            cp $stage/release/lib/*.lib $stage/lib/release/
-            cp $stage/release/include/SDL2/*.h $stage/include/SDL2/
+            cp Debug/*.dll $stage/lib/debug/
+            cp Debug/*.lib $stage/lib/debug/
+            cp Release/*.dll $stage/lib/release/
+            cp Release/*.lib $stage/lib/release/
+            cp include/SDL2/*.h $stage/include/SDL2/
         popd
     ;;
     darwin*)
-        # Setup osx sdk platform
-        SDKNAME="macosx"
-        export SDKROOT=$(xcodebuild -version -sdk ${SDKNAME} Path)
-        export MACOSX_DEPLOYMENT_TARGET=10.15
+        export MACOSX_DEPLOYMENT_TARGET=11.0
 
         # Setup build flags
         ARCH_FLAGS="-arch x86_64"
@@ -103,70 +87,24 @@ case "$AUTOBUILD_PLATFORM" in
         RELEASE_LDFLAGS="$ARCH_FLAGS $SDK_FLAGS -Wl,-headerpad_max_install_names"
 
         mkdir -p "$stage/include/SDL2"
-        mkdir -p "$stage/lib/debug"
         mkdir -p "$stage/lib/release"
 
-        PREFIX_DEBUG="$stage/temp_debug"
         PREFIX_RELEASE="$stage/temp_release"
-
-        mkdir -p $PREFIX_DEBUG
         mkdir -p $PREFIX_RELEASE
 
-        mkdir -p "build_debug"
-        pushd "build_debug"
-            CFLAGS="$DEBUG_CFLAGS" \
-            CXXFLAGS="$DEBUG_CXXFLAGS" \
-            CPPFLAGS="$DEBUG_CPPFLAGS" \
-            LDFLAGS="$DEBUG_LDFLAGS" \
-            cmake .. -GNinja -DCMAKE_BUILD_TYPE="Debug" \
-                -DCMAKE_C_FLAGS="$DEBUG_CFLAGS" \
-                -DCMAKE_CXX_FLAGS="$DEBUG_CXXFLAGS" \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL="0" \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_FAST_MATH=NO \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_GENERATE_DEBUGGING_SYMBOLS=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
-                -DCMAKE_XCODE_ATTRIBUTE_LLVM_LTO=NO \
-                -DCMAKE_XCODE_ATTRIBUTE_DEAD_CODE_STRIPPING=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_X86_VECTOR_INSTRUCTIONS=sse4.2 \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD="c++17" \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY="libc++" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED="NO" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED="NO" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="" \
-                -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
-                -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-                -DCMAKE_OSX_SYSROOT=${SDKROOT} \
-                -DCMAKE_MACOSX_RPATH=YES -DCMAKE_INSTALL_PREFIX=$PREFIX_DEBUG
-
-            cmake --build . --config Debug
-            cmake --install . --config Debug
-        popd
-
-        mkdir -p "build_release"
-        pushd "build_release"
+        mkdir -p "build"
+        pushd "build"
             CFLAGS="$RELEASE_CFLAGS" \
             CXXFLAGS="$RELEASE_CXXFLAGS" \
             CPPFLAGS="$RELEASE_CPPFLAGS" \
             LDFLAGS="$RELEASE_LDFLAGS" \
-            cmake .. -GNinja -DCMAKE_BUILD_TYPE="Release" \
+            cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" \
                 -DCMAKE_C_FLAGS="$RELEASE_CFLAGS" \
                 -DCMAKE_CXX_FLAGS="$RELEASE_CXXFLAGS" \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_OPTIMIZATION_LEVEL=3 \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_FAST_MATH=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_GCC_GENERATE_DEBUGGING_SYMBOLS=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
-                -DCMAKE_XCODE_ATTRIBUTE_LLVM_LTO=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_DEAD_CODE_STRIPPING=YES \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_X86_VECTOR_INSTRUCTIONS=sse4.2 \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD="c++17" \
-                -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY="libc++" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED="NO" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED="NO" \
-                -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="" \
                 -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
                 -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-                -DCMAKE_OSX_SYSROOT=${SDKROOT} \
-                -DCMAKE_MACOSX_RPATH=YES -DCMAKE_INSTALL_PREFIX=$PREFIX_RELEASE
+                -DCMAKE_MACOSX_RPATH=YES \
+                -DCMAKE_INSTALL_PREFIX=$PREFIX_RELEASE
 
             cmake --build . --config Release
             cmake --install . --config Release
@@ -174,16 +112,8 @@ case "$AUTOBUILD_PLATFORM" in
 
         cp -a $PREFIX_RELEASE/include/SDL2/*.* $stage/include/SDL2
 
-        cp -a $PREFIX_DEBUG/lib/*.dylib* $stage/lib/debug
-        cp -a $PREFIX_DEBUG/lib/libSDL2maind.a $stage/lib/debug
-
         cp -a $PREFIX_RELEASE/lib/*.dylib* $stage/lib/release
         cp -a $PREFIX_RELEASE/lib/libSDL2main.a $stage/lib/release
-
-        pushd "${stage}/lib/debug"
-            fix_dylib_id "libSDL2d.dylib"
-            strip -x -S libSDL2d.dylib
-        popd
 
         pushd "${stage}/lib/release"
             fix_dylib_id "libSDL2.dylib"
@@ -236,31 +166,8 @@ case "$AUTOBUILD_PLATFORM" in
             export CPPFLAGS="$TARGET_CPPFLAGS"
         fi
         
-        # Force static linkage to libz by moving .sos out of the way
-        # (Libz is only packaging statics right now but keep this working.)
-        trap restore_sos EXIT
-        for solib in "${stage}"/packages/lib/{debug,release}/libz.so*; do
-            if [ -f "$solib" ]; then
-                mv -f "$solib" "$solib".disable
-            fi
-        done
-        
-        mkdir -p "build_debug"
-        pushd "build_debug"
-            CFLAGS="$DEBUG_CFLAGS" \
-            CXXFLAGS="$DEBUG_CXXFLAGS" \
-            CPPFLAGS="$DEBUG_CPPFLAGS" \
-            cmake .. -GNinja -DCMAKE_BUILD_TYPE="Debug" \
-                -DCMAKE_C_FLAGS="$DEBUG_CFLAGS" \
-                -DCMAKE_CXX_FLAGS="$DEBUG_CXXFLAGS" \
-                -DCMAKE_INSTALL_PREFIX=$PREFIX_DEBUG
-
-            cmake --build . --config Debug
-            cmake --install . --config Debug
-        popd
-
-        mkdir -p "build_release"
-        pushd "build_release"
+        mkdir -p "build"
+        pushd "build"
             CFLAGS="$RELEASE_CFLAGS" \
             CXXFLAGS="$RELEASE_CXXFLAGS" \
             CPPFLAGS="$RELEASE_CPPFLAGS" \

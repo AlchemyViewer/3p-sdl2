@@ -62,7 +62,6 @@
           <key>manifest</key>
           <array>
             <string>lib/release/*.*</string>
-            <string>lib/debug/*.*</string>
           </array>
           <key>name</key>
           <string>darwin</string>
@@ -85,7 +84,6 @@
           <key>manifest</key>
           <array>
             <string>lib/release/*.so*</string>
-            <string>lib/debug/*.so*</string>
           </array>
           <key>name</key>
           <string>linux</string>
